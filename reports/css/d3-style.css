@@ -156,14 +156,15 @@ svg text {
   padding: 10px;
 }
 
-.method-select-label, .param-select-label, .main-dataset-select-label {
+.method-select-label, .param-select-label, .main-dataset-select-label,
+.sweep-select-label {
   float: left;
   font-size: 75%;
   color: #ffffff;
   margin-right: 8px;
 }
 
-#method_select, #param_select, #main_dataset_select,
+#method_select, #param_select, #sweep_select, #main_dataset_select,
 #metric_select, #option_select {
   float: left;
   margin-right: 20px;
