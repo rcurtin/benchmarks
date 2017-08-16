@@ -210,7 +210,7 @@ rc.paramSelect = function()
     var step = func(dbType === "sqlite" ? rc.results[0][2] : rc.results[0].step);
     var end = func(dbType === "sqlite" ? rc.results[0][3] : rc.results[0].end);
     var elem = 0;
-    for (var i = start; i < end; i += step, elem++)
+    for (var i = start; i <= end; i += step, elem++)
     {
       var new_option = document.createElement("option");
       new_option.text = name + ": " + i;
