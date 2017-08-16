@@ -12,6 +12,7 @@ smc.sweepId = -1;
 // This chart type has been selected.
 smc.onTypeSelect = function()
 {
+  console.log("onTypeSelect");
   // The user needs to be able to select a method, then parameters, then a
   // dataset.
   var selectHolder = d3.select(".selectholder");
@@ -186,11 +187,12 @@ smc.datasetSelect = function()
   smc.paramName = paramNameFull.split("(").slice(0, -1).join("(").replace(/^\s+|\s+$/g, '');
 
   // What metrics do we have available?
-  // TODO: from here
+  // TODO: write sql query to do this.
+  var sqlstr = " ";
 }
 
 smc.metricSelect = function()
-
+{
   var sqlstr = "SELECT DISTINCT * FROM "
       + "(SELECT results.time as time, results.var as var, "
       + "        results.sweep_elem_id as sweep_elem_id, libraries.name as lib,"

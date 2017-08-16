@@ -219,6 +219,10 @@ sc.datasetSelect = function()
 sc.clearChart = function()
 {
   d3.select("svg").remove();
+  d3.selectAll(".d3-tip").remove();
+  d3.selectAll(".library-select-title").remove();
+  d3.selectAll(".library_select_div").remove();
+  d3.selectAll(".legendholder").selectAll("*").remove();
 }
 
 sc.buildChart = function()
