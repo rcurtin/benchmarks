@@ -12,7 +12,6 @@ smc.sweepId = -1;
 // This chart type has been selected.
 smc.onTypeSelect = function()
 {
-  console.log("onTypeSelect");
   // The user needs to be able to select a method, then parameters, then a
   // dataset.
   var selectHolder = d3.select(".selectholder");
@@ -87,7 +86,6 @@ smc.methodSelect = function()
       "' AND methods.id = metrics.method_id AND methods.sweep_id != -1 " +
       "GROUP BY methods.parameters;";
   var params = dbExec(sqlstr);
-  console.log(JSON.stringify(params));
 
   // Loop through results and fill the second list box.
   var paramSelectBox = document.getElementById("param_select");
@@ -146,7 +144,6 @@ smc.paramSelect = function()
       + "results.method_id = methods.id AND methods.parameters = '" + smc.paramName
       + "';";
   var datasets = dbExec(sqlstr);
-  console.log(JSON.stringify(datasets));
 
   // Loop through the results and fill the third list box.
   var datasetSelectBox = document.getElementById("main_dataset_select");
@@ -186,35 +183,58 @@ smc.datasetSelect = function()
 
   smc.paramName = paramNameFull.split("(").slice(0, -1).join("(").replace(/^\s+|\s+$/g, '');
 
-  // What metrics do we have available?
-  // TODO: write sql query to do this.
-  var sqlstr = " ";
+  // What metrics do we have available?  We can do our actual query for results
+  // here, then we need to parse it.
+  var sqlstr = "SELECT DISTINCT * FROM "
+      + "(SELECT metrics.metric as metric, "
+      + "        metrics.sweep_elem_id as sweep_elem_id, libraries.name as lib,"
+      + "        max(metrics.build_id) as bid, datasets.instances as di, "
+      + "        datasets.attributes as da, datasets.size as ds"
+      + " FROM metrics, datasets, methods, libraries"
+      + " WHERE metrics.dataset_id = datasets.id"
+      + "   AND metrics.method_id = methods.id"
+      + "   AND methods.name = '" + smc.methodName + "'"
+      + "   AND methods.parameters = '" + smc.paramName + "'"
+      + "   AND libraries.id = metrics.libary_id"
+      + "   AND datasets.name = '" + datasetName + "'"
+      + " GROUP BY lib, metrics.sweep_elem_id)"
+      + "tmp GROUP BY sweep_elem_id, lib;";
+  smc.results = dbExec(sqlstr);
+  smc.results = dbType === "sqlite" ? smc.results[0].values : smc.results;
+
+  // Now we have to parse through the metrics and see what we find.
+  addMetric = function(p, c)
+  {
+    var json = jQuery.parseJSON(dbType === "sqlite" ? c[0] : c.metric);
+    for(var k in json)
+      if(p.indexOf(k) < 0)
+        p.push(k);
+    return p;
+  };
+  metrics = smc.results.reduce(addMetric, []);
+
+  var metric_select_box = document.getElementById("metric_select");
+  clearSelectBox(metric_select_box);
+  for (i = 0; i < metrics.length; i++)
+  {
+    var new_option = document.createElement("option");
+    new_option.text = metrics[i];
+    metric_select_box.add(new_option);
+  }
+  metric_select_box.selectedIndex = -1;
 }
 
 smc.metricSelect = function()
 {
-  var sqlstr = "SELECT DISTINCT * FROM "
-      + "(SELECT results.time as time, results.var as var, "
-      + "        results.sweep_elem_id as sweep_elem_id, libraries.name as lib,"
-      + "        max(results.build_id) as bid, datasets.instances as di, "
-      + "        datasets.attributes as da, datasets.size as ds"
-      + " FROM results, datasets, methods, libraries"
-      + " WHERE results.dataset_id = datasets.id"
-      + "   AND results.method_id = methods.id"
-      + "   AND methods.name = '" + smc.methodName + "'"
-      + "   AND methods.parameters = '" + smc.paramName + "'"
-      + "   AND libraries.id = results.libary_id"
-      + "   AND datasets.name = '" + datasetName + "'"
-      + " GROUP BY lib, sweep_elem_id)"
-      + "tmp GROUP BY sweep_elem_id, lib;";
-
-  smc.results = dbExec(sqlstr);
-  smc.results = dbType === "sqlite" ? sc.results[0].values : sc.results;
+  // We've already got the results, and now the user has specified the metric
+  // they want plotted.
+  var metricSelectBox = document.getElementById("metric_select");
+  smc.metricName = metricSelectBox.options[metricSelectBox.selectedIndex].text;
 
   // Obtain unique list of libraries.
-  smc.libraries = sc.results.map(
+  smc.libraries = smc.results.map(
       function(d) {
-          return dbType === "sqlite" ? d[3] : d.lib;
+          return dbType === "sqlite" ? d[2] : d.lib;
       }).reduce(
       function(p, c) {
           if (p.indexOf(c) < 0) p.push(c); return p;
@@ -224,7 +244,7 @@ smc.metricSelect = function()
   smc.activeLibraries = {};
   for (i = 0; i < smc.libraries.length; ++i)
   {
-    smc.activeLibraries[sc.libraries[i]] = true;
+    smc.activeLibraries[smc.libraries[i]] = true;
   }
 
   clearChart();
@@ -234,33 +254,44 @@ smc.metricSelect = function()
 smc.clearChart = function()
 {
   d3.select("svg").remove();
+  d3.selectAll(".d3-tip").remove();
+  d3.selectAll(".library-select-title").remove();
+  d3.selectAll(".library_select_div").remove();
+  d3.selectAll(".legendholder").selectAll("*").remove();
+}
+
+smc.extractRuntime = function(d)
+{
+  var json = jQuery.parseJSON(d);
+  for (var m in json)
+  {
+    if (m == "Runtime")
+    {
+      if (json[m] == -2)
+        return "failure";
+      else if (json[m] == -1)
+        return ">9000";
+      else
+        return json[m];
+    }
+  }
+
+  return "failure";
+}
+
+smc.extractMetric = function(d, metricName, notFoundValue)
+{
+  var json = jQuery.parseJSON(d);
+  for (var m in json)
+    if (m == metricName)
+      return json[m];
+
+  return notFoundValue;
 }
 
 smc.buildChart = function()
 {
-  smc.results = sc.results.map(
-      function(d)
-      {
-        var runtime = dbType === "sqlite" ? d[0] : d.time;
-        if (runtime == -2)
-        {
-          if (dbType === "sqlite")
-            d[0] = "failure";
-          else
-            d.time = "failure";
-        }
-        else if (runtime == -1)
-        {
-          if (dbType === "sqlite")
-            d[0] = ">9000";
-          else
-            d.time = "failure";
-        }
-
-        return d;
-      });
-
-    // Get the parameter name we are sweeping.
+  // Get the parameter name we are sweeping.
   var params = JSON.parse(smc.paramName);
   var name = "";
   for (var i in params)
@@ -276,7 +307,7 @@ smc.buildChart = function()
   var activeLibraryList = smc.libraries.map(function(d) { return d; }).reduce(
       function(p, c)
       {
-        if (smc.activeLibraries[c] == true) 
+        if (smc.activeLibraries[c] == true)
           p.push(c);
         return p;
       }, []);
@@ -284,17 +315,28 @@ smc.buildChart = function()
   var maxRuntime = d3.max(smc.results,
       function(d)
       {
-        if (smc.activeLibraries[dbType === "sqlite" ? d[3] : d.lib] == false)
+        if (smc.activeLibraries[dbType === "sqlite" ? d[2] : d.lib] == false)
           return 0;
         else
-          return mapRuntime(dbType === "sqlite" ? d[0] : d.time, 0);
+          return smc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric);
       });
+
+  var maxMetric = d3.max(smc.results,
+      function(d)
+      {
+        if (smc.activeLibraries[dbType === "sqlite" ? d[2] : d.lib] == false)
+          return 0;
+        else
+          return smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric,
+              smc.metricName, 0);
+      });
+
   // Increase so we have 16 spare pixels at the top.
-  maxRuntime *= ((height + 16) / height);
+  maxMetric *= ((height + 16) / height);
 
   var runtimeScale = d3.scale.linear()
       .domain([0, maxRuntime])
-      .range([height, 0]);
+      .range([0, width]);
 
   // We need to find out how big the sweep is.
   var sweepSql = "SELECT type, begin, step, end FROM sweeps where id = " + smc.sweepId;
@@ -306,12 +348,12 @@ smc.buildChart = function()
   var step = func(dbType === "sqlite" ? sweepResults[0][2] : sweepResults[0].step);
   var end = func(dbType === "sqlite" ? sweepResults[0][3] : sweepResults[0].end);
 
-  var sweepScale = d3.scale.linear()
-      .domain([start, end])
-      .range([0, width]);
+  var metricScale = d3.scale.linear()
+      .domain([0, maxMetric])
+      .range([height, 0]);
 
-  var xAxis = d3.svg.axis().scale(sweepScale).orient("bottom");
-  var yAxis = d3.svg.axis().scale(runtimeScale).orient("left").tickFormat(d3.format(".2f"));
+  var xAxis = d3.svg.axis().scale(runtimeScale).orient("bottom");
+  var yAxis = d3.svg.axis().scale(metricScale).orient("left");
 
   // Create svg object.
   var svg = d3.select(".svgholder").append("svg")
@@ -329,7 +371,7 @@ smc.buildChart = function()
       .style("text-anchor", "end")
       .attr("dx", 500)
       .attr("dy", "3em")
-      .text("Value of parameter '" + name + "'");
+      .text("Runtime (s)");
 
   // Add y axis.
   svg.append("g").attr("id", "yaxis")
@@ -340,43 +382,42 @@ smc.buildChart = function()
       .attr("y", 6)
       .attr("dy", ".71em")
       .style("text-anchor", "end")
-      .text("Runtime (s)");
+      .text(smc.metricName);
 
   // Create tooltips.
   var tip = d3.tip()
       .attr("class", "d3-tip")
       .offset([-10, 0])
       .html(function(d) {
-          var runtime = d[0];
-          if (d[0] != ">9000" && d[0] != "failure") {
-            runtime = d[0].toFixed(2);
+          var runtime = smc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric);
+          if (runtime != ">9000" && runtime != "failure") {
+            runtime = runtime.toFixed(2);
           }
-          return "<strong>" + d[3] + "; " + name + ": " + (start + step * d[2]) + ":</strong> <span style='color:yellow'>" + runtime + "s</span>"; });
+          var metricValue = smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, "");
+          return "<strong>" + d[2] + "; " + name + ": " + (start + step * d[1]) + ":</strong> " + smc.metricName + " " + metricValue + ", <span style='color:yellow'>" + runtime + "s</span>"; });
   svg.call(tip);
 
   // Add all of the data points.
   var lineFunc = d3.svg.line()
-      .x(function(d) { return sweepScale(dbType === "sqlite" ? start + step * d[2] : start + step * d.sweep_elem_id); })
-      .y(function(d) { return runtimeScale(mapRuntime(
-          dbType === "sqlite" ? d[0] : d.time, maxRuntime)); })
+      .x(function(d) { return runtimeScale(mapRuntime(smc.extractRuntime(
+          dbType === "sqlite" ? d[0] : d.metric), maxRuntime)); })
+      .y(function(d) { return metricScale(smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, 0)); })
       .interpolate("linear");
 
   var lineResults = []
   for (var l in smc.libraries)
   {
-    if (smc.activeLibraries[sc.libraries[l]] == true)
+    if (smc.activeLibraries[smc.libraries[l]] == true)
     {
-      lineResults.push(smc.results.map(function(d) { return d; }).reduce(function(p, c) { if(c[3] == sc.libraries[l]) { p.push(c); } return p; }, []));
+      lineResults.push(smc.results.map(function(d) { return d; }).reduce(function(p, c) { if(c[2] == smc.libraries[l]) { p.push(c); } return p; }, []));
     }
     else
     {
       lineResults.push([]);
     }
   }
-
   for (i = 0; i < lineResults.length; ++i)
   {
-    console.log(JSON.stringify(lineResults[i]));
     if (lineFunc(lineResults[i]) != null)
     {
       svg.append('svg:path')
@@ -396,22 +437,22 @@ smc.buildChart = function()
     // circle; looks kind of nice.
     svg.selectAll("dot").data(lineResults[i]).enter().append("circle")
         .attr("r", 6)
-        .attr("cx", function(d) { return sweepScale(dbType === "sqlite" ? start + step * d[2] : start + step * d.sweep_elem_id); })
-        .attr("cy", function(d) { return runtimeScale(mapRuntime(dbType === "sqlite" ? d[0] : d.time, maxRuntime)); })
+        .attr("cx", function(d) { return runtimeScale(mapRuntime(smc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric), maxRuntime)); })
+        .attr("cy", function(d) { return metricScale(smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, 0)); })
         .attr('fill', '#222222')
         .on('mouseover', tip.show)
         .on('mouseout', tip.hide);
     svg.selectAll("dot").data(lineResults[i]).enter().append("circle")
         .attr("r", 4)
-        .attr("cx", function(d) { return sweepScale(dbType === "sqlite" ? start + step * d[2] : start + step * d.sweep_elem_id); })
-        .attr("cy", function(d) { return runtimeScale(mapRuntime(dbType === "sqlite" ? d[0] : d.time, maxRuntime)); })
+        .attr("cx", function(d) { return runtimeScale(mapRuntime(smc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric), maxRuntime)); })
+        .attr("cy", function(d) { return metricScale(smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, 0)); })
         .attr('fill', '#ffffff')
         .on('mouseover', tip.show)
         .on('mouseout', tip.hide);
     svg.selectAll("dot").data(lineResults[i]).enter().append("circle")
         .attr("r", 3)
-        .attr("cx", function(d) { return sweepScale(dbType === "sqlite" ? start + step * d[2] : start + step * d.sweep_elem_id); })
-        .attr("cy", function(d) { return runtimeScale(mapRuntime(dbType === "sqlite" ? d[0] : d.time, maxRuntime)); })
+        .attr("cx", function(d) { return runtimeScale(mapRuntime(smc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric), maxRuntime)); })
+        .attr("cy", function(d) { return metricScale(smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, 0)); })
         .attr('fill', function(d) { return color(d[4]) })
         .on('mouseover', tip.show)
         .on('mouseout', tip.hide);
@@ -469,7 +510,7 @@ smc.buildChart = function()
 // Toggle a library to on or off.
 smc.toggleLibrary = function(library)
 {
-  smc.activeLibraries[library] = !hc.activeLibraries[library];
+  smc.activeLibraries[library] = !smc.activeLibraries[library];
 
   clearChart();
   buildChart();
@@ -478,7 +519,7 @@ smc.toggleLibrary = function(library)
 // Set all libraries on.
 smc.enableAllLibraries = function()
 {
-  for (v in smc.activeLibraries) { hc.activeLibraries[v] = true; }
+  for (v in smc.activeLibraries) { smc.activeLibraries[v] = true; }
 
   clearChart();
   buildChart();
@@ -487,7 +528,7 @@ smc.enableAllLibraries = function()
 // Set all libraries off.
 smc.disableAllLibraries = function()
 {
-  for (v in hc.activeLibraries) { hc.activeLibraries[v] = false; }
+  for (v in smc.activeLibraries) { smc.activeLibraries[v] = false; }
 
   clearChart();
   buildChart();

@@ -157,7 +157,7 @@ svg text {
 }
 
 .method-select-label, .param-select-label, .main-dataset-select-label,
-.sweep-select-label {
+.sweep-select-label, .metric-select-label {
   float: left;
   font-size: 75%;
   color: #ffffff;
