@@ -40,6 +40,11 @@ sc.onTypeSelect = function()
   sc.listMethods();
 }
 
+sc.clear = function()
+{
+  sc.clearChart();
+}
+
 // List the available methods where there is a sweep.
 sc.listMethods = function()
 {

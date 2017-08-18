@@ -47,6 +47,11 @@ smc.onTypeSelect = function()
   smc.listMethods();
 }
 
+smc.clear = function()
+{
+  smc.clearChart();
+}
+
 // List the available methods where there is a sweep.
 smc.listMethods = function()
 {
