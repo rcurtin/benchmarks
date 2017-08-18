@@ -28,7 +28,7 @@ class QDA_SHOGUN_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/abalone7_train.csv', 'datasets/abalone7_test.csv', 'datasets/abalone7_labels.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/shogun/qda.py")
     obj = getattr(module, "QDA")
@@ -63,9 +63,79 @@ class QDA_SCIKIT_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/abalone7_train.csv', 'datasets/abalone7_test.csv', 'datasets/abalone7_labels.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/scikit/qda.py")
+    obj = getattr(module, "QDA")
+    self.instance = obj(self.dataset, verbose=self.verbose, timeout=self.timeout)
+
+  '''
+  Test the constructor.
+  '''
+  def test_Constructor(self):
+    self.assertEqual(self.instance.verbose, self.verbose)
+    self.assertEqual(self.instance.timeout, self.timeout)
+    self.assertEqual(self.instance.dataset, self.dataset)
+
+  '''
+  Test the 'RunTiming' function.
+  '''
+  def test_RunTiming(self):
+    result = self.instance.RunMetrics({})
+    self.assertTrue(result["Runtime"] > 0)
+    self.assertTrue(result["ACC"] > 0)
+    self.assertTrue(result["Precision"] > 0)
+    self.assertTrue(result["Recall"] > 0)
+
+'''
+Test the matlab QDA script.
+'''
+class QDA_MATLAB_TEST(unittest.TestCase):
+
+  '''
+  Test initialization.
+  '''
+  def setUp(self):
+    self.dataset = ['datasets/iris_train.csv', 'datasets/iris_test.csv', 'datasets/iris_labels.csv']
+    self.verbose = False
+    self.timeout = 240
+
+    module = Loader.ImportModuleFromPath("methods/matlab/qda.py")
+    obj = getattr(module, "QDA")
+    self.instance = obj(self.dataset, verbose=self.verbose, timeout=self.timeout)
+
+  '''
+  Test the constructor.
+  '''
+  def test_Constructor(self):
+    self.assertEqual(self.instance.verbose, self.verbose)
+    self.assertEqual(self.instance.timeout, self.timeout)
+    self.assertEqual(self.instance.dataset, self.dataset)
+
+  '''
+  Test the 'RunMetrics' function.
+  '''
+  def test_RunMetrics(self):
+    result = self.instance.RunMetrics({})
+    self.assertTrue(result["Runtime"] > 0)
+    self.assertTrue(result["ACC"] > 0)
+    self.assertTrue(result["Precision"] > 0)
+    self.assertTrue(result["Recall"] > 0)
+
+'''
+Test the R QDA script.
+'''
+class QDA_R_TEST(unittest.TestCase):
+
+  '''
+  Test initialization.
+  '''
+  def setUp(self):
+    self.dataset = ['datasets/iris_train.csv', 'datasets/iris_test.csv', 'datasets/iris_labels.csv']
+    self.verbose = False
+    self.timeout = 500 # Changed because installing Packages might take time.
+
+    module = Loader.ImportModuleFromPath("methods/R/qda.py")
     obj = getattr(module, "QDA")
     self.instance = obj(self.dataset, verbose=self.verbose, timeout=self.timeout)
 

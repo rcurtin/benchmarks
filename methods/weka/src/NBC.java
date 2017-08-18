@@ -1,7 +1,7 @@
 /**
  * @file NBC.java
  * @author Marcus Edel
- *
+ 
  * Naive Bayes Classifier with weka.
  */
 
@@ -16,8 +16,9 @@ import weka.filters.unsupervised.attribute.NumericToNominal;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
-//import java.io.Exception;
-
+import weka.core.Attribute;
+import java.util.List;
+import java.util.ArrayList;
 /**
  * This class use the weka libary to implement Naive Bayes Classifier.
  */
@@ -30,34 +31,6 @@ public class NBC {
       + "Required options:\n"
       + "-T [string]     A file containing the test set.\n"
       + "-t [string]     A file containing the training set.");
-
-  public static void getProbabilities(Classifier model, Instances testData) {
-    double[] probs;
-    try{
-        File probabilities = new File("weka_probabilities.csv");
-        if(!probabilities.exists()) {
-          probabilities.createNewFile();
-        }
-        FileWriter writer = new FileWriter(probabilities.getName(), false);
-        //BufferedWriter Bwriter = new BufferedWriter(writer);
-        int l=0,i=0;
-        for (i = 0; i < testData.numInstances(); i++) {
-          probs = model.distributionForInstance(testData.instance(i));
-          String data="";
-          for(l=0; l<probs.length; l++) {
-            String inst = Double.toString(probs[l]);
-            data = data.concat(inst);
-            data = data.concat(",");
-          }
-          writer.write(data);
-          writer.write("\n");
-
-        }
-        writer.close();
-      }catch(Exception e) {
-        e.printStackTrace();
-      }
-  }
 
   public static void main(String args[]) {
   Timers timer = new Timers();
@@ -72,21 +45,22 @@ public class NBC {
       DataSource source = new DataSource(trainFile);
       Instances trainData = source.getDataSet();
 
-      // Transform numeric class to nominal class because the
-      // classifier cannot handle numeric classes.
-      NumericToNominal nm = new NumericToNominal();
-      String[] options = new String[2];
-      options[0] = "-R";
-      options[1] = "last"; //set the attributes from indices 1 to 2 as
-      nm.setOptions(options);
-      nm.setInputFormat(trainData);
-      trainData = Filter.useFilter(trainData, nm);
-
       // Use the last row of the training data as the labels.
       trainData.setClassIndex((trainData.numAttributes() - 1));
+      DataSource testsource = new DataSource(testFile);
+      Instances testData = testsource.getDataSet();
 
-      source = new DataSource(testFile);
-      Instances testData = source.getDataSet();
+      // Add pseudo class to the test set if no class information is provided.
+      if (testData.numAttributes() < trainData.numAttributes()) {
+        List<String> labelslist = new ArrayList<String>();
+        for (int i = 0; i < trainData.classAttribute().numValues(); i++) {
+          labelslist.add(trainData.classAttribute().value(i));
+        }
+
+        testData.insertAttributeAt(new Attribute("class", labelslist),
+            testData.numAttributes());
+      }
+
       // Use the last row of the training data as the labels.
       testData.setClassIndex((testData.numAttributes() - 1));
 
@@ -94,9 +68,6 @@ public class NBC {
       // Create and train the classifier.
       Classifier cModel = (Classifier)new NaiveBayes();
       cModel.buildClassifier(trainData);
-
-      // Get the probabilities.
-      getProbabilities(cModel,testData);
 
       // Run Naive Bayes Classifier on the test dataset.
       // Write predicted class values for each intance to
@@ -108,12 +79,10 @@ public class NBC {
           predictedlabels.createNewFile();
         }
         FileWriter writer = new FileWriter(predictedlabels.getName(), false);
-        //BufferedWriter Bwriter = new BufferedWriter(writer);
 
         for (int i = 0; i < testData.numInstances(); i++) {
-          prediction = cModel.classifyInstance(testData.instance(i));
-          System.out.println(prediction);
-          String pred = Double.toString(prediction);
+          prediction = cModel.classifyInstance(trainData.instance(i));
+          String pred = Double.toString(prediction+1);
           writer.write(pred);
           writer.write("\n");
         }

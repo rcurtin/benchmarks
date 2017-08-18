@@ -29,7 +29,7 @@ class LinearRegression_MLPACK_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/diabetes.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/mlpack/linear_regression.py")
     obj = getattr(module, "LinearRegression")
@@ -77,7 +77,7 @@ class LinearRegression_WEKA_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/iris_test.arff']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/weka/linear_regression.py")
     obj = getattr(module, "LinearRegression")
@@ -102,7 +102,7 @@ class LinearRegression_SHOGUN_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/diabetes.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/shogun/linear_regression.py")
     obj = getattr(module, "LinearRegression")
@@ -132,9 +132,9 @@ class LinearRegression_SCIKIT_TEST(unittest.TestCase):
   Test initialization.
   '''
   def setUp(self):
-    self.dataset = ['datasets/diabetes.csv']
+    self.dataset = ['datasets/iris_train.csv', 'datasets/iris_test.csv', 'datasets/iris_labels.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/scikit/linear_regression.py")
     obj = getattr(module, "LinearRegression")
@@ -154,6 +154,7 @@ class LinearRegression_SCIKIT_TEST(unittest.TestCase):
   def test_RunMetrics(self):
     result = self.instance.RunMetrics({})
     self.assertTrue(result["Runtime"] > 0)
+    self.assertTrue(result["Simple MSE"] > 0)
 
 '''
 Test the mlpy Simple Linear Regression Prediction script.
@@ -166,7 +167,7 @@ class LinearRegression_MLPY_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/diabetes.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/mlpy/linear_regression.py")
     obj = getattr(module, "LinearRegression")
@@ -199,7 +200,7 @@ class LinearRegression_MATLAB_TEST(unittest.TestCase):
   def setUp(self):
     self.dataset = ['datasets/diabetes.csv']
     self.verbose = False
-    self.timeout = 9000
+    self.timeout = 240
 
     module = Loader.ImportModuleFromPath("methods/matlab/linear_regression.py")
     obj = getattr(module, "LinearRegression")
