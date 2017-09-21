@@ -44,6 +44,28 @@ apmc.clear = function()
   apmc.clearChart();
 }
 
+apmc.process_library_name = function(l, p)
+{
+  // We want to turn the library name and parameters dict into, e.g.,
+  // mlpack: max_iterations=sweep(10, 10, 100), algorithm=lbfgs
+  var output = l;
+  var i = 0;
+  var d = jQuery.parseJSON(p);
+  if (Object.keys(d).length > 0)
+  {
+    output += ": ";
+    for (pp in d)
+    {
+      output += pp + "=" + d[pp];
+      i++;
+      if (i != Object.keys(d).length)
+        output += ";";
+    }
+  }
+
+  return output;
+}
+
 // List the available methods where there is a sweep.
 apmc.listMethods = function()
 {
@@ -230,11 +252,12 @@ apmc.metricSelect = function()
   // Obtain unique list of libraries.
   apmc.libraries = apmc.results.map(
       function(d) {
-          return dbType === "sqlite" ? (d[4] + ": " + d[5]) : (d.lib + ": " + d.parameters);
+          return dbType === "sqlite" ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.lib, d.parameters);
       }).reduce(
       function(p, c) {
           if (p.indexOf(c) < 0) p.push(c); return p;
       }, []);
+  console.log(apmc.libraries);
 
   // By default, all libraries are active.
   apmc.activeLibraries = {};
@@ -299,7 +322,7 @@ apmc.buildChart = function()
   var maxRuntime = d3.max(apmc.results,
       function(d)
       {
-        if (apmc.activeLibraries[dbType === "sqlite" ? (d[4] + ": " + d[5]) : (d.name + ": " + d.parameters)] == false)
+        if (apmc.activeLibraries[dbType === "sqlite" ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)] == false)
         {
           return 0;
         }
@@ -316,7 +339,7 @@ apmc.buildChart = function()
   var maxMetric = d3.max(apmc.results,
       function(d)
       {
-        if (apmc.activeLibraries[dbType === "sqlite" ? (d[4] + ": " + d[5]) : (d.name + ": " + d.parameters)] == false)
+        if (apmc.activeLibraries[dbType === "sqlite" ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)] == false)
           return 0;
         else
           return apmc.extractMetric(dbType === "sqlite" ? d[0] : d.metric,
@@ -445,7 +468,7 @@ apmc.buildChart = function()
     console.log(apmc.libraryVersions[l]);
     for (var p in apmc.libraryVersions[l])
     {
-      if (!apmc.activeLibraries[l + ": " + p])
+      if (!apmc.activeLibraries[apmc.process_library_name(l, p)])
         continue;
 
       // Now we have a library/parameters combination.
@@ -475,7 +498,7 @@ apmc.buildChart = function()
             .attr('fill', '#222222')
             .on('mouseover', function(d, i)
                 {
-                  d3.select('.d3-tip').style("border-color", color(d[4] + ": " + d[5]));
+                  d3.select('.d3-tip').style("border-color", color((dbType === "sqlite") ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)));
                   tip.show(d, i);
                 })
             .on('mouseout', tip.hide);
@@ -486,7 +509,7 @@ apmc.buildChart = function()
             .attr('fill', '#ffffff')
             .on('mouseover', function(d, i)
                 {
-                  d3.select('.d3-tip').style("border-color", color(d[4] + ": " + d[5]));
+                  d3.select('.d3-tip').style("border-color", color((dbType === "sqlite") ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)));
                   tip.show(d, i);
                 })
             .on('mouseout', tip.hide);
@@ -494,10 +517,10 @@ apmc.buildChart = function()
             .attr("r", 3)
             .attr("cx", function(d) { return runtimeScale(mapRuntime(apmc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric), maxRuntime)); })
             .attr("cy", function(d) { return metricScale(apmc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, apmc.metricName, 0)); })
-            .attr('fill', function(d) { return color(d[4] + ": " + d[5]) })
+            .attr('fill', function(d) { return color((dbType === "sqlite") ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)) })
             .on('mouseover', function(d, i)
                 {
-                  d3.select('.d3-tip').style("border-color", color(d[4] + ": " + d[5]));
+                  d3.select('.d3-tip').style("border-color", color((dbType === "sqlite") ? apmc.process_library_name(d[4], d[5]) : apmc.process_library_name(d.name, d.parameters)));
                   tip.show(d, i);
                 })
             .on('mouseout', tip.hide);

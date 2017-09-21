@@ -70,6 +70,7 @@ svg text {
 }
 
 .library-select-div {
+  clear: both;
   min-width: 140px;
   float: left;
   height: 20px;
