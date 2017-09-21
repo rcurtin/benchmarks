@@ -142,6 +142,7 @@ function chartTypeSelect()
   else if (chartType == "highest-metric-comparison") { activeChartType = hmc; }
   else if (chartType == "sweep-runtime-comparison") { activeChartType = sc; }
   else if (chartType == "sweep-metric-comparison") { activeChartType = smc; }
+  else if (chartType == "all-sweep-metric-comparison") { activeChartType = apmc; }
 
   activeChartType.onTypeSelect();
 }

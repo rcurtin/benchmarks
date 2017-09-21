@@ -56,7 +56,7 @@ smc.clear = function()
 smc.listMethods = function()
 {
   var methods = dbExec("SELECT DISTINCT methods.name FROM methods, results "
-      + "WHERE methods.id = results.method_id AND methods.sweep_id != -1 "
+      + "WHERE methods.id = results.method_id AND results.sweep_id != -1 "
       + "ORDER BY name;");
   var methodSelectBox = document.getElementById("method_select");
 
@@ -85,10 +85,10 @@ smc.methodSelect = function()
   var methodSelectBox = document.getElementById("method_select");
   smc.methodName = methodSelectBox.options[methodSelectBox.selectedIndex].text; // At higher scope.
 
-  var sqlstr = "SELECT DISTINCT methods.parameters, methods.sweep_id, " +
+  var sqlstr = "SELECT DISTINCT methods.parameters, metrics.sweep_id, " +
       "metrics.libary_id, COUNT(DISTINCT metrics.libary_id) AS count FROM " +
       "methods, metrics WHERE methods.name = '" + smc.methodName +
-      "' AND methods.id = metrics.method_id AND methods.sweep_id != -1 " +
+      "' AND methods.id = metrics.method_id AND metrics.sweep_id != -1 " +
       "GROUP BY methods.parameters;";
   var params = dbExec(sqlstr);
 
@@ -145,7 +145,7 @@ smc.paramSelect = function()
 
   var sqlstr = "SELECT DISTINCT datasets.name FROM datasets, results, methods "
       + "WHERE datasets.id = results.dataset_id AND methods.name = '"
-      + smc.methodName + "' AND methods.sweep_id = " + sweepId + " AND "
+      + smc.methodName + "' AND results.sweep_id = " + sweepId + " AND "
       + "results.method_id = methods.id AND methods.parameters = '" + smc.paramName
       + "';";
   var datasets = dbExec(sqlstr);
@@ -399,7 +399,7 @@ smc.buildChart = function()
             runtime = runtime.toFixed(2);
           }
           var metricValue = smc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, smc.metricName, "");
-          return "<strong>" + d[2] + "; " + name + ": " + (start + step * d[1]) + ":</strong> " + smc.metricName + " " + metricValue + ", <span style='color:yellow'>" + runtime + "s</span>"; });
+          return "<strong>" + d[2] + "; " + name + ":<br/>" + (start + step * d[1]) + ":</strong> " + smc.metricName + " " + metricValue + ", <span style='color:yellow'>" + runtime + "s</span>"; });
   svg.call(tip);
 
   // Add all of the data points.
