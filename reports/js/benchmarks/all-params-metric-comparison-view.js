@@ -196,10 +196,10 @@ apmc.datasetSelect = function()
     var params = jQuery.parseJSON((dbType === "sqlite") ? c[5] : c.parameters);
     for (e in params)
     {
-      if (params[e].indexOf("sweep(") != -1)
+      if (String(params[e]).indexOf("sweep(") != -1)
       {
         // Do we already know about this sweep?
-        if (params[e] in apmc.sweeps)
+        if (String(params[e]) in apmc.sweeps)
           continue;
 
         // Great, we have a sweep---now we need to get the information.
@@ -210,7 +210,7 @@ apmc.datasetSelect = function()
         sweepResults = (dbType === "sqlite" ? sweepResults[0].values[0] : sweepResults[0]);
 
         // Insert these results into the dict.
-        apmc.sweeps[params[e]] =
+        apmc.sweeps[String(params[e])] =
             { "type": (dbType === "sqlite" ? sweepResults[0] : sweepResults.type),
               "begin": (dbType === "sqlite" ? sweepResults[1] : sweepResults.begin),
               "step": (dbType === "sqlite" ? sweepResults[2] : sweepResults.step),
@@ -289,7 +289,9 @@ apmc.extractRuntime = function(d)
       if (json[m] == -2)
         return "failure";
       else if (json[m] == -1)
-        return ">9000";
+        return "timeout";
+      else if (String(json[m]).indexOf(">") != -1)
+        return "timeout";
       else
         return json[m];
     }
@@ -329,7 +331,7 @@ apmc.buildChart = function()
         else
         {
           x = apmc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric);
-          if (x === "failure" || x === ">9000")
+          if (x === "failure" || x === "timeout")
             return 0;
           else
             return x;
@@ -349,6 +351,7 @@ apmc.buildChart = function()
   // Increase so we have 16 spare pixels at the top.
   maxMetric *= ((height + 16) / height);
 
+  console.log(maxRuntime);
   var runtimeScale = d3.scale.linear()
       .domain([0, maxRuntime])
       .range([0, width]);
@@ -405,11 +408,19 @@ apmc.buildChart = function()
       .offset([-10, 0])
       .html(function(d) {
           var runtime = apmc.extractRuntime(dbType === "sqlite" ? d[0] : d.metric);
-          if (runtime != ">9000" && runtime != "failure") {
+          if (runtime != "timeout" && runtime != "failure") {
             runtime = runtime.toFixed(3);
           }
           var metricValue = apmc.extractMetric(dbType === "sqlite" ? d[0] : d.metric, apmc.metricName, "");
-          metricValue = metricValue.toFixed(3);
+          if (metricValue != "timeout" && metricValue != "failure" &&
+String(metricValue).indexOf(">") == -1 && metricValue != "")
+          {
+            metricValue = metricValue.toFixed(3);
+          }
+          else if (metricValue == "")
+          {
+            metricValue = "failure";
+          }
 
           var libName = (dbType === "sqlite" ? d[4] : d.name);
           var paramName = (dbType === "sqlite" ? d[5] : d.parameters);
@@ -428,7 +439,7 @@ apmc.buildChart = function()
           {
             output += p + ": ";
             // Is it a sweep option?
-            if (params[p].indexOf("sweep(") != -1)
+            if (String(params[p]).indexOf("sweep(") != -1)
             {
               // Get sweep element.
               var sweepElemId = (dbType === "sqlite" ? d[3] : d.sweep_elem_id);
@@ -441,13 +452,17 @@ apmc.buildChart = function()
             }
             else
             {
-              output += params[p];
+              output += String(params[p]);
             }
             output += "; ";
           }
           output += "<br/>";
           output += apmc.metricName + ": " + metricValue + "<br/>";
-          output += "Runtime: " + runtime + "s<br/>";
+          output += "Runtime: " + runtime;
+          if (runtime != "failure" && runtime != "timeout")
+          {
+            output += "s<br/>";
+          }
 
           return output;
       });
@@ -464,8 +479,6 @@ apmc.buildChart = function()
   // Add all of the data points.
   for (var l in apmc.libraryVersions)
   {
-    console.log("lib: " + l)
-    console.log(apmc.libraryVersions[l]);
     for (var p in apmc.libraryVersions[l])
     {
       if (!apmc.activeLibraries[apmc.process_library_name(l, p)])

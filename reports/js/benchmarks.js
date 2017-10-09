@@ -74,7 +74,8 @@ var color = d3.scale.ordinal().range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b"
  */
 function mapRuntime(runtime, max)
 {
-  if (runtime == ">9000") { return max; }
+  if (String(runtime).indexOf(">") != -1) { return max; }
+  else if (runtime == "timeout") { return max; }
   else if (runtime == "failure") { return 0; }
   else { return runtime; }
 }
